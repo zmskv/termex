@@ -15,29 +15,34 @@ class Particle:
         self.phi_dot_expr = sp.diff(phi_expr, t)
         self.r_dot_func = sp.lambdify(t, self.r_dot_expr, 'numpy')
         self.phi_dot_func = sp.lambdify(t, self.phi_dot_expr, 'numpy')
+
     @staticmethod
     @njit
     def compute_position(r, phi):
         x = r * np.cos(phi)
         y = r * np.sin(phi)
         return x, y
+    
     @staticmethod
     @njit
     def compute_velocity(r, phi, r_dot, phi_dot):
         vx = r_dot * np.cos(phi) - r * phi_dot * np.sin(phi)
         vy = r_dot * np.sin(phi) + r * phi_dot * np.cos(phi)
         return vx, vy
+    
     @staticmethod
     @njit
     def compute_acceleration(r, phi, r_dot, phi_dot, r_ddot, phi_ddot):
         ax = (r_ddot - r * phi_dot**2) * np.cos(phi) - (2 * r_dot * phi_dot + r * phi_ddot) * np.sin(phi)
         ay = (r_ddot - r * phi_dot**2) * np.sin(phi) + (2 * r_dot * phi_dot + r * phi_ddot) * np.cos(phi)
         return ax, ay
+    
     def get_positions(self, T):
         r = self.r_func(T)
         phi = self.phi_func(T)
         x, y = self.compute_position(r, phi)
         return x, y
+    
     def get_velocities(self, T):
         r = self.r_func(T)
         phi = self.phi_func(T)
@@ -45,6 +50,7 @@ class Particle:
         phi_dot = self.phi_dot_func(T)
         vx, vy = self.compute_velocity(r, phi, r_dot, phi_dot)
         return vx, vy
+    
     def get_accelerations(self, T):
         r = self.r_func(T)
         phi = self.phi_func(T)
@@ -58,6 +64,8 @@ class Particle:
         phi_ddot = phi_ddot_func(T)
         ax, ay = self.compute_acceleration(r, phi, r_dot, phi_dot, r_ddot, phi_ddot)
         return ax, ay
+    
+
 class Arrow:
     def __init__(self, ax, x, y, dx, dy, color='k', scale=1.0):
         self.ax = ax
@@ -71,6 +79,8 @@ class Arrow:
     def update(self, x, y, dx, dy):
         self.arrow.remove()
         self.arrow = self.ax.quiver(x, y, dx * self.scale, dy * self.scale, color=self.color, angles='xy', scale_units='xy', scale=1)
+
+
 class Plotter:
     def __init__(self, ax):
         self.ax = ax
@@ -100,6 +110,8 @@ class Plotter:
         self.trace.set_data([], [])
         self.velocity_arrow.update(0, 0, 0, 0)
         self.acceleration_arrow.update(0, 0, 0, 0)
+
+
 class Animator:
     def __init__(self, particle, plotter, T):
         self.particle = particle
@@ -130,10 +142,12 @@ class Animator:
         plt.pause(len(self.T) * interval / 1000 + 2)  # Пауза на время анимации + 2 секунды
         plt.close()  # Закрыть окно с графиком
         self.plotter.reset_plot()  # Сбросить график
+
+
 if __name__ == "__main__":
     t = sp.Symbol('t')
     r_expr = 2 + sp.sin(12 * t)
-    phi_expr = t + 0.2 * sp.cos(13 * t)
+    phi_expr = t + 0.2 * sp.cos(13  * t)
     T = np.linspace(1, 10, 1000)
     particle = Particle(r_expr, phi_expr, t)
     fig, ax = plt.subplots()
