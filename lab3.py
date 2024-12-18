@@ -1,146 +1,187 @@
+import numpy as np
+from math import pi
+import matplotlib
+from matplotlib.animation import FuncAnimation
+from matplotlib import pyplot as plt
+from scipy.integrate import odeint
 import math
 
-import numpy as np
-import sympy
-import matplotlib.pyplot as plt
-from scipy.integrate import odeint
-
-from matplotlib.animation import FuncAnimation
-
-
-def SystDiffEq(y, t, m1, m2, a, b, g):
-    # y = [phi, psi, phi', psi'] -> dy = [phi', psi', phi'', psi'']
-    dy = np.zeros_like(y)
+'''
+    y - Вектор состояния системы
+    t - Время
+    m1 - Масса обруча
+    m2 - Масса грузика
+    c - Жесткость пружин для грузика
+    c1 - Жесткость пружины для обруча
+'''
+def fnc(y, t, m1, m2, c, c1, R, g):
+    dy = np.zeros(4)
     dy[0] = y[2]
     dy[1] = y[3]
 
-    phi = y[0]
-    psi = y[1]
-    dphi = y[2]
-    dpsi = y[3]
+    a11 = -m2 * R * np.cos(y[1])
+    a12 = ((2 * m1 + m2) * R ** 2 + m2 * y[0]**2 + 2 * R * m2 * y[0] * np.sin(y[1]))
+    a21 = 1
+    a22 = -R * np.cos(y[1])
 
-    # a11 * phi'' + a12 * psi'' = b1
-    # a21 * phi'' + a22 * psi'' = b2
+    b1 = m2 * R * y[0] * y[3] ** 2 * np.cos(y[1]) - 2 * m2 * (y[0] + R * np.sin(y[1])) * y[2] * y[3] - c1 * R ** 2 * y[1] - m2 * g * y[0] * np.cos(y[1])
+    b2 = y[0] * y[3] ** 2 - 2 * (c / m2) * y[0] - g * np.sin(y[1])
 
-    a11 = (m1 + m2)*2*a
-    a12 = -m2*b*(1 - np.cos(psi - phi))
-    b1 = -(m1 + m2)*g*np.sin(phi) + m2*b*np.sin(psi - phi)*dpsi**2 
-    
-    a21 = a*(1 - np.cos(psi - phi))
-    a22 = -2*b
-    b2 = g*np.sin(psi) + a*np.sin(psi - phi)*dphi**2
-
-    detA = a11 * a22 - a12 * a21
-    detA1 = b1 * a22 - a12 * b2
-    detA2 = a11 * b2 - b1 * a21
-
-    dy[2] = detA1 / detA
-    dy[3] = detA2 / detA
+    dy[2] = (b1 * a22 - b2 * a12) / (a11 * a22 - a12 * a21)
+    dy[3] = (b2 * a11 - b1 * a21) / (a11 * a22 - a12 * a21)
 
     return dy
 
-# Дано:
-g = 9.8
-m1 = 4
-m2 = 2
-r1 = 1
-r2 = 0.125
-r3 = 0.05
-a = r1 - r3
-b = r1 - r2
-t0 = 0
-phi0 = np.pi / 6
-psi0 = np.pi / 3
-dphi0 = 0
-dpsi0 = np.pi / 3
+t_fin = 20
+t = np.linspace(0, t_fin, 1001)
 
-# Задаю функции phi(t) и psi(t) 
+'''
+    Начальные параметры системы
+'''
+x0 = 4
+m1 = 1 # Масса обруча
+m2 = 0.5 # Масса грузика
+R = 1 # Радиус обруча
+c = 5 # Жесткость пружин, для грузика
+c1 = 5 # Жесткости пружины для обруча
+g = 9.81 # Ускорение свободного падения
+phi0 = pi/2 # Угол
+dphi0 = 1 # Угловая скорость
+s0 = 0 # Начальное положение грузика
+ds0 = 0 # Начальная скорость грузика
+y0 = [s0, phi0, ds0, dphi0] # Вектор начального состояния системы. Это все величины, которые могут менять при движении
+'''
+    Мы получаем состояния системы в различные промежутки времени
+'''
+Y = odeint(fnc, y0, t, (m1, m2, c, c1, R, g)) # Решение дифференциального уравнения
 
-step = 1000
+s = Y[:, 0]
 
-t = np.linspace(0, 10, step)
+ds = Y[:, 2]
+dds = [fnc(y, time, m1, m2, c, c1, R, g)[2] for y, time in zip(Y, t)]
 
-y0 = np.array([phi0, psi0, dphi0, dpsi0])
+phi = Y[:, 1]
+dphi = Y[:, 3]
+ddphi = [fnc(y, time, m1, m2, c, c1, R, g)[3] for y, time in zip(Y, t)]
 
-Y = odeint(SystDiffEq, y0, t, (m1, m2, a, b, g))
+angles = np.linspace(0, 2 * pi, 360)
 
-phi = Y[:,0]
-psi = Y[:,1]
-dphi = Y[:,2]
-dpsi = Y[:,3]
+box_w = 0.4
+box_h = 0.2
+def spring(k, h, w):
+    x = np.linspace(0, h, 100)
+    return np.array([x, np.sin(2 * math.pi / (h / k) * x) * w])
 
-ddphi = np.zeros_like(t)
-ddpsi = np.zeros_like(t)
-for i in np.arange(len(t)):
-    ddphi[i], ddpsi[i] = SystDiffEq(Y[i], t[i], m1, m2, a, b, g)[2:]
-    
-# Задаю функции N1 и Ft - реакции опоры и трения
+box_x_tmp = np.array([-box_h / 2, -box_h / 2, box_h / 2, box_h / 2, -box_h / 2])
+box_y_tmp = np.array([-box_w / 2, box_w / 2, box_w / 2, -box_w / 2, -box_w / 2])
 
-N1 = (m1 + m2)*(g*np.cos(phi) + a*dphi**2) +\
-      m2*b*(ddpsi*np.sin(phi - psi) + dpsi**2*np.cos(phi - psi))
+F_friction = np.zeros(len(t))
+N = np.zeros(len(t))
 
-Ft = (m1 + m2)*(g*np.sin(phi) + a*ddphi) +\
-        m2*b*(ddpsi*np.cos(psi - phi) - dpsi**2*np.sin(psi - phi))
+ring_dots_x = np.zeros([len(t), len(angles)])
+ring_dots_y = np.zeros([len(t), len(angles)])
 
-fgrt = plt.figure()
-phiplt = fgrt.add_subplot(4, 1, 1)
-plt.title("phi(t)")
-phiplt.plot(t, phi, color = 'r')
-psiplt = fgrt.add_subplot(4, 1, 2)
-plt.title("psi(t)")
-psiplt.plot(t, psi)
-n1plt = fgrt.add_subplot(4, 1, 3)
-plt.title("N1(t)")
-n1plt.plot(t, N1)
-ftplt = fgrt.add_subplot(4, 1, 4)
-plt.title("Ft(t)")
-ftplt.plot(t, Ft)
-fgrt.show()
+box_dots_x = np.zeros([len(t), 5])
+box_dots_y = np.zeros([len(t), 5])
 
-# Анимация
+spring_a_x = np.zeros([len(t), 100])
+spring_a_y = np.zeros([len(t), 100])
+spring_b_x = np.zeros([len(t), 100])
+spring_b_y = np.zeros([len(t), 100])
+
+spring_c_x = np.zeros([len(t), 100])
+spring_c_y = np.zeros([len(t), 100])
+
+for i in range(len(t)):
+    F_friction[i] = (m1 + m2) * R * ddphi[i] - m2 * (dds[i] - s[i] * dphi[i]**2) * np.cos(phi[i]) + m2*(2*ds[i]*dphi[i] + s[i]*ddphi[i]) * np.sin(phi[i]) + c1*R*phi[i]
+
+    N[i] = m2*((dds[i] - s[i]*(dphi[i]**2))*np.sin(phi[i])+(2*ds[i]*dphi[i] + s[i]*ddphi[i])*np.cos(phi[i])) + (m1+m2)*g
+
+    '''
+        Сам обруч
+    '''
+    ring_x = x0 + phi[i] * R
+    ring_y = R
+
+    ring_dots_x[i] = np.cos(phi[i]) * R * np.cos(angles) + np.sin(phi[i]) * R * np.sin(angles) + ring_x
+    ring_dots_y[i] = - np.sin(phi[i]) * R * np.cos(angles) + np.cos(phi[i]) * R * np.sin(angles) + ring_y
+
+    '''
+        Грузик
+    '''
+    bx = box_x_tmp - s[i]
+    by = box_y_tmp
+    box_dots_x[i] = np.cos(phi[i]) * bx + np.sin(phi[i]) * by + ring_x
+    box_dots_y[i] = - np.sin(phi[i]) * bx + np.cos(phi[i]) * by + ring_y
+
+    '''
+        Пружинка от стены к обручу
+    '''
+    spring_a_x[i] = spring(5, ring_x, 0.2)[0]
+    spring_a_y[i] = spring(5, ring_x, 0.2)[1] + ring_y
+
+    '''
+        Пружинки внутри обруча
+    '''
+    b_x = R - spring(10, R + s[i] - box_h / 2, 0.16)[0]
+    b_y = spring(10, R - s[i], 0.16)[1]
+    spring_b_x[i] = np.cos(phi[i]) * b_x + np.sin(phi[i]) * b_y + ring_x
+    spring_b_y[i] = -np.sin(phi[i]) * b_x + np.cos(phi[i]) * b_y + ring_y
+
+    c_x = spring(10, R - s[i] - box_h / 2, 0.16)[0] - R
+    c_y = spring(10, R - s[i], 0.16)[1]
+    spring_c_x[i] = np.cos(phi[i]) * c_x + np.sin(phi[i]) * c_y + ring_x
+    spring_c_y[i] = -np.sin(phi[i]) * c_x + np.cos(phi[i]) * c_y + ring_y
+
+
+'''
+    Графики
+'''
+fig_for_graphs = plt.figure(figsize=[13, 7])
+
+ax_for_graphs = fig_for_graphs.add_subplot(2, 2, 1)
+ax_for_graphs.plot(t, F_friction, color='black')
+ax_for_graphs.set_title("F(t)")
+ax_for_graphs.set(xlim=[0, t_fin])
+ax_for_graphs.grid(True)
+
+ax_for_graphs = fig_for_graphs.add_subplot(2, 2, 2)
+ax_for_graphs.plot(t, N, color='black')
+ax_for_graphs.set_title("N(t)")
+ax_for_graphs.set(xlim=[0, t_fin])
+ax_for_graphs.grid(True)
+
+ax_for_graphs = fig_for_graphs.add_subplot(2, 2, 3)
+ax_for_graphs.plot(t, s, color='blue')
+ax_for_graphs.set_title("s(t)")
+ax_for_graphs.set(xlim=[0, t_fin])
+ax_for_graphs.grid(True)
+
+ax_for_graphs = fig_for_graphs.add_subplot(2, 2, 4)
+ax_for_graphs.plot(t, phi, color='red')
+ax_for_graphs.set_title('phi(t)')
+ax_for_graphs.set(xlim=[0, t_fin])
+ax_for_graphs.grid(True)
+
 fig = plt.figure()
-gr = fig.add_subplot(1, 1, 1)
-gr.axis('equal')
+ax = fig.add_subplot(1, 1, 1)
+ax.axis("equal")
 
-def rotation2D(x, y, angle):
-    Rx = x * np.cos(angle) - y * np.sin(angle)
-    Ry = x * np.sin(angle) + y * np.cos(angle)
-    return Rx, Ry
-
-Ox, Oy = 0, 1
-
-pO = plt.Circle((Ox, Oy), r3, color='black')
-
-C1x = np.linspace(0, 10, step)
-C1y = np.linspace(0, 10, step)
-
-for i in range(len(phi)):
-    Rx, Ry = rotation2D(0, -a, phi[i])
-    C1x[i] = Ox + Rx
-    C1y[i] = Oy + Ry
-
-C2x = np.linspace(0, 10, step)
-C2y = np.linspace(0, 10, step)
-
-for i in range(len(phi)):
-    Rx, Ry = rotation2D(0, -b, psi[i])
-    C2x[i] = C1x[i] + Rx
-    C2y[i] = C1y[i] + Ry
-
-gr.add_patch(pO)
-
-A1 = plt.Circle((C1x[0], C1y[0]), r1, color='black', fill=False)
-A2 = plt.Circle((C2x[0], C2y[0]), r2, color='black', fill=False)
-
-gr.add_patch(A1)
-gr.add_patch(A2)
+surface = ax.plot([0, 0, 8], [5, 0, 0], "black")
+ring, = ax.plot(ring_dots_x[0], ring_dots_y[0], "black")
+box, = ax.plot(box_dots_x[0], box_dots_y[0], "black")
+spring_a, = ax.plot(spring_a_x[0], spring_a_y[0], "red")
+spring_b, = ax.plot(spring_b_x[0], spring_b_y[0], "purple")
+spring_c, = ax.plot(spring_c_x[0], spring_c_y[0], "brown")
 
 def animate(i):
-    A1.center = (C1x[i], C1y[i])
-    A2.center = (C2x[i], C2y[i])
+    ring.set_data(ring_dots_x[i], ring_dots_y[i])
+    box.set_data(box_dots_x[i], box_dots_y[i])
+    spring_a.set_data(spring_a_x[i], spring_a_y[i])
+    spring_b.set_data(spring_b_x[i], spring_b_y[i])
+    spring_c.set_data(spring_c_x[i], spring_c_y[i])
 
-gr.set(xlim=[-2, 2], ylim=[-2, 2])
+    return ring, box, spring_a, spring_b, spring_c
 
-anim = FuncAnimation(fig, animate, frames = step, interval = 1)
-
+animation = FuncAnimation(fig, animate, frames=1000, interval=60)
 plt.show()
