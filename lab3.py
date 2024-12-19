@@ -15,6 +15,17 @@ import math
     c1 - Жесткость пружины для обруча
 '''
 def fnc(y, t, m1, m2, c, c1, R, g):
+    """
+
+    y[0] = s: положение грузика вдоль оси x.
+
+    y[1] = phi: угол поворота обруча.
+
+    y[2] = ds: скорость грузика.
+
+    y[3] = dphi: угловая скорость обруча.
+    """
+
     dy = np.zeros(4)
     dy[0] = y[2]
     dy[1] = y[3]
@@ -93,9 +104,9 @@ spring_c_x = np.zeros([len(t), 100])
 spring_c_y = np.zeros([len(t), 100])
 
 for i in range(len(t)):
-    F_friction[i] = (m1 + m2) * R * ddphi[i] - m2 * (dds[i] - s[i] * dphi[i]**2) * np.cos(phi[i]) + m2*(2*ds[i]*dphi[i] + s[i]*ddphi[i]) * np.sin(phi[i]) + c1*R*phi[i]
+    F_friction[i] = (m1 + m2) * R * ddphi[i] - m2 * (dds[i] - s[i] * dphi[i]**2) * np.cos(phi[i]) + m2*(2*ds[i]*dphi[i] + s[i]*ddphi[i]) * np.sin(phi[i]) + c1*R*phi[i] # рассчет силы трения
 
-    N[i] = m2*((dds[i] - s[i]*(dphi[i]**2))*np.sin(phi[i])+(2*ds[i]*dphi[i] + s[i]*ddphi[i])*np.cos(phi[i])) + (m1+m2)*g
+    N[i] = m2*((dds[i] - s[i]*(dphi[i]**2))*np.sin(phi[i])+(2*ds[i]*dphi[i] + s[i]*ddphi[i])*np.cos(phi[i])) + (m1+m2)*g # рассчитываем силу реакции опоры
 
     '''
         Сам обруч
