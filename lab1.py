@@ -58,7 +58,7 @@ class Particle:
     @njit
     def compute_acceleration(r, phi, r_dot, phi_dot, r_ddot, phi_ddot):
         """
-        Вычисляет ускорениe (ax, ay) в декартовых координатах.
+        Вычисляет ускорени (ax, ay) в декартовых координатах.
 
         :param r: Массив радиусов.
         :param phi: Массив углов.
@@ -197,8 +197,20 @@ class Plotter:
         :return: Обновленные объекты для анимации.
         """
         self.line.set_data([x], [y])
-        self.trace.set_
+        self.trace.set_data(trace_x, trace_y)
+        self.velocity_arrow.update(x, y, vx, vy)
+        self.acceleration_arrow.update(x, y, ax, ay)
+        return self.line, self.trace, self.velocity_arrow.arrow, self.acceleration_arrow.arrow
+    
+    def reset_plot(self):
+        """
+        Сбрасывает график.
 
+        """
+        self.line.set_data([], [])
+        self.trace.set_data([], [])
+        self.velocity_arrow.update(0, 0, 0, 0)
+        self.acceleration_arrow.update(0, 0, 0, 0)
 
 class Animator:
     def __init__(self, particle, plotter, T):
