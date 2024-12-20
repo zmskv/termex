@@ -164,9 +164,11 @@ class Plotter:
         self.trace, = ax.plot([], [], '-', lw=1)  # Траектория движения
         self.velocity_arrow = Arrow(ax, 0, 0, 0, 0, color='r', scale=0.1)  # Стрелка скорости
         self.acceleration_arrow = Arrow(ax, 0, 0, 0, 0, color='g', scale=0.01)  # Стрелка ускорения
+        self.radius_arrow = Arrow(ax, 0, 0, 0, 0, color='b', scale=1.0)  # Стрелка радиус-вектора
         self.legend_elements = [
             plt.Line2D([0], [0], color='r', lw=2, label='Velocity'),
-            plt.Line2D([0], [0], color='g', lw=2, label='Acceleration')
+            plt.Line2D([0], [0], color='g', lw=2, label='Acceleration'),
+            plt.Line2D([0], [0], color='b', lw=2, label='Radius Vector')
         ]
         self.ax.legend(handles=self.legend_elements, loc='upper left')  # Легенда
 
@@ -180,7 +182,8 @@ class Plotter:
         self.trace.set_data([], [])
         self.velocity_arrow.update(0, 0, 0, 0)
         self.acceleration_arrow.update(0, 0, 0, 0)
-        return self.line, self.trace, self.velocity_arrow.arrow, self.acceleration_arrow.arrow
+        self.radius_arrow.update(0, 0, 0, 0)
+        return self.line, self.trace, self.velocity_arrow.arrow, self.acceleration_arrow.arrow, self.radius_arrow.arrow
 
     def update(self, x, y, trace_x, trace_y, vx, vy, ax, ay):
         """
@@ -200,7 +203,8 @@ class Plotter:
         self.trace.set_data(trace_x, trace_y)
         self.velocity_arrow.update(x, y, vx, vy)
         self.acceleration_arrow.update(x, y, ax, ay)
-        return self.line, self.trace, self.velocity_arrow.arrow, self.acceleration_arrow.arrow
+        self.radius_arrow.update(0, 0, x, y)  # Обновляем радиус-вектор
+        return self.line, self.trace, self.velocity_arrow.arrow, self.acceleration_arrow.arrow, self.radius_arrow.arrow
     
     def reset_plot(self):
         """
@@ -211,6 +215,7 @@ class Plotter:
         self.trace.set_data([], [])
         self.velocity_arrow.update(0, 0, 0, 0)
         self.acceleration_arrow.update(0, 0, 0, 0)
+        self.radius_arrow.update(0, 0, 0, 0)
 
 class Animator:
     def __init__(self, particle, plotter, T):
